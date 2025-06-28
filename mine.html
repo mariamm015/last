@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Supermarket App</title>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; margin: 0; background-color: #fdf6f9; }
+    header { background-color: #cc66cc; color: white; padding: 20px; text-align: center; }
+
+    .header-logo {
+      height: 130px;
+      width: 130px;
+      margin-right: 10px;
+      vertical-align: middle;
+    }
+
+    .search-section, .review-section { text-align: center; margin: 20px; }
+    #search-input {
+      padding: 10px;
+      width: 80%;
+      max-width: 300px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    .product-cards {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      justify-content: center;
+      padding: 10px;
+    }
+    .card {
+      background-color: #fff;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      padding: 15px;
+      width: 220px;
+      text-align: center;
+    }
+    ul#product-list { list-style: none; padding: 0; }
+    ul#product-list li {
+      background-color: #fff;
+      margin: 10px;
+      padding: 12px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .delete-botton {
+      background-color: #ff6666;
+      color: white;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .total-section {
+      text-align: center;
+      padding: 20px;
+      background-color: #f0e6f5;
+      font-weight: bold;
+    }
+    .user-form {
+      text-align: center;
+      margin: 20px;
+    }
+
+    .user-form input, .user-form textarea {
+      display: block;
+      margin: 10px auto;
+      padding: 10px;
+      width: 80%;
+      max-width: 300px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+    }
+
+    .checkout-section {
+      text-align: center;
+      margin: 30px;
+    }
+    #checkout-botton {
+      background-color: #4caf50;
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      animation: pulse 1.8s infinite;
+    }
+    #checkout-botton:hover {
+      background-color: #45a049;
+      transform: scale(1.08);
+      box-shadow: 0 0 15px #4caf50;
+    }
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+    .reviews {
+      background: #fff8ff;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      width: 90%;
+      margin: auto;
+    }
+    .reviews h3 { color: #cc66cc; }
+    .review {
+      background: #fff;
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    #loading-msg {
+      text-align: center;
+      font-weight: bold;
+      color: #cc66cc;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <img src="https://thumbs.dreamstime.com/b/vegetables-shopping-cart-trolley-grocery-logo-icon-design-vector-171090350.jpg" class="header-logo" alt="Logo" />
+    
+    <h1>🛒 Supermarket App</h1>
+    <p id="current-date"></p>
+  </header>
+
+  <div class="search-section">
+    <input id="search-input" placeholder="Search for a product..." />
+  </div>
+
+  <p id="loading-msg">Loading products...</p>
+  <div id="product-cards" class="product-cards"></div>
+  <ul id="product-list"></ul>
+
+  <div class="total-section">
+    Total: <span id="total-amount">0</span> EGP
+  </div>
+
+  <div class="user-form">
+    <h3>📝 Enter Your Info</h3>
+    <input type="text" id="user-name" placeholder="Your Name" required />
+    <input type="tel" id="user-phone" placeholder="Phone Number" required />
+    <textarea id="user-address" placeholder="Address" rows="3" required></textarea>
+  </div>
+
+  <div class="checkout-section">
+    <button id="checkout-botton">✅ Finish Shopping</button>
+    <p id="countdown-message" style="font-weight: bold; color: #4caf50;"></p>
+  </div>
+
+  <div class="review-section">
+    <div class="reviews">
+      <h3>🗣 Customer Reviews</h3>
+      <div id="review-list"></div>
+    </div>
+  </div>
+
+  <script>
+    const now = new Date();
+    document.getElementById("current-date").textContent = "Today: " + now.toLocaleString();
+
+    const readyProducts = [
+      { name: "🥛 Milk", price: 20 },
+      { name: "🍞 Bread", price: 5 },
+      { name: "🥚 Eggs", price: 30 },
+      { name: "🧀 Cheese", price: 25 },
+      { name: "🍅 Tomato", price: 10 },
+      { name: "🧃 Juice", price: 15 },
+      { name: "🍗 Chicken", price: 80 },
+      { name: "🍎 Apple", price: 12 },
+      { name: "🍫 Chocolate", price: 18 },
+      { name: "🧼 Soap", price: 10 }
+    ];
+
+    let productList = JSON.parse(localStorage.getItem("shoppingList")) || [];
+
+    const productListUI = document.getElementById("product-list");
+    const totalAmount = document.getElementById("total-amount");
+    const productCardsContainer = document.getElementById("product-cards");
+    const loadingMsg = document.getElementById("loading-msg");
+
+    function loadSupermarketProducts() {
+      return new Promise(resolve => {
+        setTimeout(() => {
+          resolve(readyProducts);
+        }, 1000);
+      });
+    }
+
+    function displayProductCards(products) {
+      productCardsContainer.innerHTML = "";
+      products.forEach(product => {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+          <h3>${product.name}</h3>
+          <p>Price: ${product.price} EGP</p>
+          <button onclick="addProduct('${product.name}', 1, ${product.price})">Add to List</button>
+        `;
+        productCardsContainer.appendChild(card);
+      });
+    }
+
+    function addProduct(name, quantity, price) {
+      const existing = productList.find(p => p.name === name);
+      if (existing) {
+        existing.quantity += quantity;
+        existing.total = existing.quantity * existing.price;
+      } else {
+        productList.push({ name, quantity, price, total: quantity * price });
+      }
+      saveToLocalStorage();
+      renderList(productList);
+    }
+
+    function renderList(list) {
+      productListUI.innerHTML = "";
+      let total = 0;
+      list.forEach((product, index) => {
+        total += product.total;
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <span>
+            ${product.name} - ${product.price} EGP x 
+            <button onclick="updateQuantity(${index}, -1)">➖</button>
+            ${product.quantity}
+            <button onclick="updateQuantity(${index}, 1)">➕</button>
+            = ${product.total} EGP
+          </span>
+          <button class="delete-botton" onclick="deleteItem(${index})">X</button>
+        `;
+        productListUI.appendChild(li);
+      });
+      totalAmount.textContent = total;
+    }
+
+    function updateQuantity(index, change) {
+      const item = productList[index];
+      item.quantity += change;
+      if (item.quantity < 1) item.quantity = 1;
+      item.total = item.quantity * item.price;
+      saveToLocalStorage();
+      renderList(productList);
+    }
+
+    function deleteItem(index) {
+      productList.splice(index, 1);
+      saveToLocalStorage();
+      renderList(productList);
+    }
+
+    function saveToLocalStorage() {
+      localStorage.setItem("shoppingList", JSON.stringify(productList));
+    }
+
+    document.getElementById("search-input").addEventListener("input", function () {
+      const query = this.value.toLowerCase();
+      const filtered = readyProducts.filter(product => product.name.toLowerCase().includes(query));
+      displayProductCards(filtered);
+    });
+
+    document.getElementById("checkout-botton").addEventListener("click", function () {
+      const name = document.getElementById("user-name").value.trim();
+      const phone = document.getElementById("user-phone").value.trim();
+      const address = document.getElementById("user-address").value.trim();
+
+      if (!name || !phone || !address) {
+        alert("📌 Please enter your name, phone, and address.");
+        return;
+      }
+
+      if (productList.length === 0) {
+        alert("🛒 Your shopping list is empty!");
+        return;
+      }
+
+    let summary = "🧾 Order Summary for " + name + ":\n📞 Phone: " + phone + "\n🏠 Address: " + address + "\n\n";
+    let total = 0;
+    productList.forEach(function(item) {
+      summary += " " + item.name + " x" + item.quantity + " = " + item.total + " EGP\n";
+      total += item.total;
+    });
+    summary += "\nTotal: " + total + " EGP";
+    alert(summary);
+
+    let timeLeft = 5;
+    const countdownEl = document.getElementById("countdown-message");
+    countdownEl.textContent = "✅ Preparing your order... Please wait: " + timeLeft;
+
+    const interval = setInterval(function() {
+      timeLeft--;
+
+      if (timeLeft > 0) {
+        countdownEl.textContent = "⏳ Please wait: " + timeLeft;
+      } else {
+        countdownEl.textContent = "✅ Order Confirmed!";
+      }
+
+      if (timeLeft <= 0) {
+         clearInterval(interval);
+      }
+    }, 1000);
+
+    });
+
+    
+    loadSupermarketProducts().then(products => {
+      loadingMsg.remove();
+      displayProductCards(products);
+      renderList(productList);
+    });
+
+    
+    fetch("https://jsonplaceholder.typicode.com/comments?_limit=5")
+      .then(res => res.json())
+      .then(data => {
+        const reviewList = document.getElementById("review-list");
+        data.forEach(comment => {
+          const div = document.createElement("div");
+          div.className = "review";
+          div.innerHTML = "<strong>" + comment.name + "</strong><p>" +comment.body + "</p>";
+          reviewList.appendChild(div);
+        });
+      });
+  </script>
+</body>
+</html>
